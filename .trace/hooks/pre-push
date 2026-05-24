@@ -1,0 +1,62 @@
+#!/bin/sh
+
+echo ""
+echo "🔍 Trace — Pre-push check"
+echo ""
+
+# Find which files changed in this push
+CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null)
+
+# Extract unique module names from changed src/ files
+MODULES=$(echo "$CHANGED" | grep "^src/" | cut -d'/' -f2 | sort -u)
+
+if [ -z "$MODULES" ]; then
+  exit 0
+fi
+
+echo "Changed modules detected:"
+for MODULE in $MODULES; do
+  echo "  → $MODULE"
+done
+
+echo ""
+
+# Check trace file status for each changed module
+MISSING_TRACE=0
+for MODULE in $MODULES; do
+  TRACE_FILE="src/$MODULE/$MODULE-trace.md"
+  if [ -f "$TRACE_FILE" ]; then
+    # Count unreviewed sections
+    WARNINGS=$(grep -c "⚠️" "$TRACE_FILE" 2>/dev/null || echo 0)
+    # Check if runbook is written
+    RUNBOOK_MISSING=$(grep -c "Runbook not yet written" "$TRACE_FILE" 2>/dev/null || echo 0)
+    if [ "$RUNBOOK_MISSING" -gt 0 ]; then
+      echo "  ⚠️  $MODULE — runbook not written (/trace runbook update $MODULE)"
+    fi
+    if [ "$WARNINGS" -gt 0 ]; then
+      echo "  📋 $MODULE — $WARNINGS unreviewed section(s) in trace file"
+    else
+      echo "  ✅ $MODULE — trace file looks complete"
+    fi
+  else
+    echo "  ❌ $MODULE — no trace file found (run /trace init)"
+    MISSING_TRACE=1
+  fi
+done
+
+echo ""
+echo "❓ Did anything change that needs documenting?"
+echo "   /trace update [module]   — update feature docs or log a changelog entry"
+echo "   /trace remember [module] — log a bug fix or gotcha"
+echo "   /trace decide [module]   — log an architectural decision"
+echo ""
+
+if [ "$MISSING_TRACE" -eq 1 ]; then
+  echo "⚠️  Some modules have no trace file. Run /trace init to generate them."
+  echo ""
+fi
+
+echo "Press Enter to continue push, or Ctrl+C to cancel and update first."
+read CONFIRM
+
+exit 0

@@ -19,7 +19,7 @@ Display the current **Feature Understanding** section to the user so they can se
 Ask one question:
 > "What changed in this module? Describe briefly."
 
-Wait for answer.
+Wait for answer. Save this — it is used later for the changelog and PR template.
 
 ---
 
@@ -56,7 +56,7 @@ Update these sections only:
 - **Dependency Map** — update if dependencies changed
 - **Expected Behaviour** — update if absences or conditionals changed
 
-**DO NOT touch the Memory Log.** That section is append-only and only modified by `/trace remember`.
+**DO NOT touch the Memory Log or Decision Log.** Those sections are append-only.
 
 Remove ⚠️ markers from sections that are now filled in.
 
@@ -64,6 +64,61 @@ Update the `> Last Updated:` line at the top with today's date and `git config u
 
 ---
 
-## STEP 6 — Confirm
+## STEP 6 — Changelog prompt
+
+Ask:
+> "Is this change worth logging in the changelog?
+> → Yes — give me a one-line summary
+> → No, minor change"
+
+If Yes — append to the top of Section 8 — Changelog (newest first):
+
+```
+### {today's date} — {one-line summary}
+- {what changed, from STEP 2}
+```
+
+If the change is breaking, also ask:
+> "Is this a breaking change? If yes, describe it in one line."
+
+Add `- Breaking change: {description}` under that changelog entry.
+
+---
+
+## STEP 7 — PR template prompt
+
+Ask:
+> "Are you raising a PR for this change?
+> → Yes
+> → No"
+
+If Yes — read the trace file and generate this PR description template, pre-filled with real context:
+
+```
+## What changed
+{answer from STEP 2}
+
+## Why
+{most recent Decision Log entry if one exists — otherwise leave blank}
+
+## Modules affected
+Upstream: {from Dependency Map — This Module Depends On}
+Downstream: {from Dependency Map — Modules That Depend On This}
+
+## Trace files updated
+- [ ] src/{module}/{module}-trace.md updated
+- [ ] Ownership is current
+- [ ] Decision log updated if architectural change
+- [ ] Runbook updated if incident response changed
+
+## Watch out
+{Intentional Absences table content}
+```
+
+Print this to the terminal so the developer can copy-paste into GitHub.
+
+---
+
+## STEP 8 — Confirm
 
 > "✅ src/{module}/{module}-trace.md updated."
