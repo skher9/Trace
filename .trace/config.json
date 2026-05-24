@@ -1,0 +1,14 @@
+{
+  "traceVersion": "3.0",
+  "project": "",
+  "stack": "",
+  "environments": ["development", "staging", "production"],
+  "securityMode": "basic",
+  "monitoring": {
+    "tool": null,
+    "configured": false,
+    "dashboardUrl": null
+  },
+  "createdAt": "",
+  "updatedAt": ""
+}

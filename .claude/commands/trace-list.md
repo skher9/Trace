@@ -2,11 +2,22 @@
 
 Usage: `/trace list`
 
-Show all trace files in the project with their status.
+Show full project knowledge status and health score.
 
 ---
 
-## STEP 1 — Find all trace files
+## STEP 1 — Read config
+
+Read `.trace/config.json`. Extract:
+- `project` name
+- `stack`
+- `securityMode`
+- `environments` list
+- `monitoring.tool` and `monitoring.configured`
+
+---
+
+## STEP 2 — Find all trace files
 
 Run:
 ```
@@ -15,43 +26,93 @@ find src/ -name "*-trace.md" | sort
 
 ---
 
-## STEP 2 — For each file, extract
+## STEP 3 — For each file, extract
 
 - **Module name** → from filename
-- **Owner** → read Section 5 — Ownership, Primary Owner row
-- **Last updated date** → read the `> Last Updated:` line at the top
-- **Memory count** → count `### [` occurrences inside the Memory Log section (Section 4)
-- **Decision count** → count `### [` occurrences inside the Decision Log section (Section 6)
-- **Runbook status** → check if Section 7 still has the ⚠️ placeholder → ❌ if yes, ✅ if written
-- **Needs review count** → count total `⚠️` occurrences in the file
+- **Owner** → Section 5, Primary Owner row. Show ⚠️ if still "Not yet assigned"
+- **Last updated** → `> Last Updated:` line at top. Show "Never" if never manually updated
+- **Memory count** → count `### [` inside Section 4 only
+- **Decision count** → count `### [` inside Section 6 only
+- **Runbook status** → ✅ if Section 7 has no ⚠️ placeholder, ❌ otherwise
+- **Test status** → ✅ if Section 11 has at least one confirmed covered item and no "Never" in Last Test Run, ⚠️ if test files found but gaps undocumented, ❌ if no test files detected
+- **Security status** → ✅ if Section 12 checklist has no ❌ items, ⚠️ if any ⚠️ items, ❌ if checklist is entirely unchecked
+- **Unreviewed count** → total `⚠️` occurrences in the file
 
 ---
 
-## STEP 3 — Return formatted table
+## STEP 4 — Calculate health score
+
+Score out of 100, across all modules. Each category worth 20 points total, divided equally across modules.
+
+**Category 1 — Ownership (20 pts)**
+Every module has a named owner (not ⚠️) → full 20 pts
+Partial → proportional
+
+**Category 2 — Runbook (20 pts)**
+Every module has a written runbook (✅) → full 20 pts
+Partial → proportional
+
+**Category 3 — Test Coverage (20 pts)**
+Every module has test coverage documented (✅ or ⚠️, not ❌) → full 20 pts
+Partial → proportional
+
+**Category 4 — Security Checklist (20 pts)**
+Every module has security checklist filled (✅ or ⚠️, not entirely unchecked) → full 20 pts
+Partial → proportional
+
+**Category 5 — Memory Log (20 pts)**
+Every module has at least one memory log entry → full 20 pts
+Partial → proportional
+
+Total = sum of all 5 categories.
+
+Score bands:
+- 90–100 → 🟢 Excellent
+- 70–89  → 🟡 Good
+- 50–69  → 🟠 Needs work
+- 0–49   → 🔴 High risk
+
+---
+
+## STEP 5 — Return formatted output
 
 ```
-📚 Trace — Project Knowledge Base
+📚 Trace v3 — Project Knowledge Base
 
-| Module | Owner | Last Updated | Memories | Decisions | Runbook | ⚠️ |
-|--------|-------|-------------|----------|-----------|---------|-----|
-| payments | Priya Sharma | 2026-05-24 | 3 entries | 2 | ✅ | 0 |
-| auth | Rahul | 2026-05-20 | 1 entry | 0 | ❌ | 2 |
-| notifications | ⚠️ | Never | 0 entries | 0 | ❌ | 5 |
+{project name} | Stack: {stack} | Security: {basic/enterprise}
+Environments: {comma-separated list}
+Monitoring: {tool name and "configured" OR "not configured ⚠️"}
+
+| Module | Owner | Memories | Decisions | Runbook | Tests | Security | ⚠️ |
+|--------|-------|----------|-----------|---------|-------|----------|----|
+| payments | Priya Sharma | 3 | 2 | ✅ | ✅ | ✅ | 0 |
+| auth | Rahul | 1 | 0 | ❌ | ⚠️ | ✅ | 3 |
+| notifications | ⚠️ | 0 | 0 | ❌ | ❌ | ❌ | 7 |
+
+Project Health Score: {score}/100 {band emoji} {label}
 
 Risks:
-❌ Runbook missing — {list modules with no runbook}
-⚠️ No owner — {list modules with unassigned ownership}
+{list only if present}
+❌ Runbook missing — {module list}
+❌ No owner — {module list}
+❌ No tests documented — {module list}
+❌ Security checklist empty — {module list}
+❌ No memory entries — {module list}
 
-💡 Run /trace runbook update [module] for missing runbooks.
-💡 Run /trace owner set [module] for unassigned owners.
-💡 Run /trace update [module] to clear ⚠️ sections.
+💡 Next actions:
+{show only for gaps that exist}
+  /trace runbook update [module]   — write missing runbooks
+  /trace owner set [module]        — assign missing owners
+  /trace coverage update [module]  — document test gaps
+  /trace security update [module]  — complete security checklist
+  /trace remember [module]         — log first memory entry
 ```
 
 Rules:
-- Owner shows ⚠️ if still "Not yet assigned" or has ⚠️ prefix
-- Use "Never" for last updated if file was only auto-generated
+- Show Risks section only if gaps exist — omit entirely if score is 100
+- Show only relevant Next actions — don't list commands for things already done
 - Use "1 entry" / "N entries" (not "1 entries")
-- Runbook is ✅ only if Section 7 has no ⚠️ placeholder remaining
+- Owner column shows ⚠️ if unassigned, name if assigned
 
 If no trace files found:
 > "No trace files found. Run /trace init to get started."

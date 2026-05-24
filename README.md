@@ -18,48 +18,14 @@ Trace fixes this. Every bug fix, weird decision, and "don't touch this" warning 
 
 1. Open Claude Code in your project
 2. Run `/trace init`
-3. Review the generated files and fill in the ⚠️ sections
-4. Install the pre-push hook (optional but recommended):
+3. Answer two setup questions (environments + security mode)
+4. Review the generated files and fill in the ⚠️ sections
+5. Install the pre-push hook (optional but recommended):
 
 ```bash
 cp .trace/hooks/pre-push .git/hooks/pre-push
 chmod +x .git/hooks/pre-push
 ```
-
----
-
-## Commands
-
-### Core commands
-
-| Command | What it does |
-|---------|-------------|
-| `/trace init` | Scan your project and generate trace files for every module |
-| `/trace remember [module]` | Log a bug fix, decision, or gotcha |
-| `/trace why [module or keyword]` | Retrieve context fast — what broke here, what to watch out for |
-| `/trace list` | See all trace files, owners, runbook status, and review gaps |
-| `/trace update [module]` | Update a trace file when a module changes — also generates PR template |
-| `/trace impact [module]` | See the full blast radius if this module breaks |
-
-### Ownership
-
-| Command | What it does |
-|---------|-------------|
-| `/trace owner [module]` | View who owns this module, auto-pulled from git history |
-| `/trace owner set [module]` | Manually assign ownership and escalation chain |
-
-### Decisions
-
-| Command | What it does |
-|---------|-------------|
-| `/trace decide [module]` | Log an architectural or product decision with a mandatory revisit date |
-
-### Runbooks
-
-| Command | What it does |
-|---------|-------------|
-| `/trace runbook [module]` | View emergency runbook — clean, no noise, just the steps |
-| `/trace runbook update [module]` | Create or update the runbook for a module |
 
 ---
 
@@ -77,12 +43,98 @@ Each module gets one file: `src/{module}/{module}-trace.md`
 | 6. Decision Log | Architectural decisions with mandatory revisit dates |
 | 7. Runbook | Emergency steps for when this module breaks at 3am |
 | 8. Changelog | Human-readable history of meaningful changes |
+| 9. Performance Baseline | Expected metrics, alert thresholds, monitoring tool |
+| 10. Environment Differences | How this module behaves differently per environment |
+| 11. Test Coverage | Detected test files, gaps, risk levels, last run dates |
+| 12. Security & Compliance | Checklist, sensitive data, compliance status, vulnerabilities |
+
+---
+
+## Commands
+
+### Core
+| Command | What it does |
+|---------|-------------|
+| `/trace init` | Scan project, ask setup questions, generate all 12 sections |
+| `/trace remember [module]` | Log a bug fix, decision, or gotcha |
+| `/trace why [module or keyword]` | Retrieve context — what broke, what to watch out for |
+| `/trace list` | Project health score + status of every module |
+| `/trace update [module]` | Update docs when a module changes — generates PR template |
+| `/trace impact [module]` | Full blast radius if this module breaks |
+
+### Ownership
+| Command | What it does |
+|---------|-------------|
+| `/trace owner [module]` | View ownership, auto-pulled from git history |
+| `/trace owner set [module]` | Manually assign owner and escalation chain |
+
+### Decisions
+| Command | What it does |
+|---------|-------------|
+| `/trace decide [module]` | Log a decision — Revisit When is mandatory |
+
+### Runbooks
+| Command | What it does |
+|---------|-------------|
+| `/trace runbook [module]` | View emergency runbook — clean, no noise |
+| `/trace runbook update [module]` | Create or update the runbook |
+
+### Performance
+| Command | What it does |
+|---------|-------------|
+| `/trace metrics [module]` | View or update performance baseline metrics |
+
+### Environments
+| Command | What it does |
+|---------|-------------|
+| `/trace env [module]` | View environment differences table |
+| `/trace env update [module]` | Update environment rows |
+| `/trace env add` | Add a new environment column to all trace files |
+
+### Test Coverage
+| Command | What it does |
+|---------|-------------|
+| `/trace coverage [module]` | View test coverage — re-scans for new test files live |
+| `/trace coverage update [module]` | Document confirmed coverage, gaps, and last run |
+
+### Security
+| Command | What it does |
+|---------|-------------|
+| `/trace security [module]` | View security & compliance section |
+| `/trace security update [module]` | Walk through security checklist |
+| `/trace security mode [basic/enterprise]` | Switch security mode project-wide |
+
+---
+
+## Project config
+
+Trace stores project-level settings in `.trace/config.json`:
+
+```json
+{
+  "traceVersion": "3.0",
+  "project": "my-api",
+  "stack": "NestJS",
+  "environments": ["development", "staging", "production"],
+  "securityMode": "basic",
+  "monitoring": {
+    "tool": "datadog",
+    "configured": true,
+    "dashboardUrl": null
+  },
+  "createdAt": "2026-05-24",
+  "updatedAt": "2026-05-24"
+}
+```
+
+`securityMode`: `basic` (5-item checklist) or `enterprise` (full compliance audit trail)
+`environments`: drives the column count in Section 10 across all trace files
 
 ---
 
 ## Pre-push hook
 
-The pre-push hook nudges developers to update trace files before pushing. It checks which modules changed and reminds you if trace files are missing or incomplete.
+Nudges developers to update trace files before pushing. Checks which modules changed, warns if trace files are missing or have unwritten runbooks.
 
 Install once per developer:
 ```bash
@@ -90,7 +142,23 @@ cp .trace/hooks/pre-push .git/hooks/pre-push
 chmod +x .git/hooks/pre-push
 ```
 
-The hook is non-blocking — it shows warnings and prompts, but always lets the push through.
+Non-blocking — always lets the push through.
+
+---
+
+## Monitoring tool detection
+
+Trace auto-detects monitoring tools from `package.json` during `/trace init`:
+
+| Package | Tool |
+|---------|------|
+| `dd-trace`, `datadog` | Datadog |
+| `newrelic` | New Relic |
+| `elastic-apm-node` | Elastic APM |
+| `@opentelemetry/api` | OpenTelemetry |
+| `prom-client` | Prometheus |
+
+If a tool is detected and an API key is found in `.env`, `/trace metrics` prompts for manual paste from the dashboard and stores the values.
 
 ---
 
@@ -101,9 +169,10 @@ The hook is non-blocking — it shows warnings and prompts, but always lets the 
 3. Runbooks are for 3am emergencies — every word must count
 4. Mark auto-generated content with ⚠️ so humans know what needs review
 5. Never invent business context — only write what is known from code and git
+6. `/trace env add` updates ALL trace files — always confirm scope first
 
 ---
 
 ## Example
 
-See `TRACE-EXAMPLE.md` for a complete v2 trace file with all 8 sections filled.
+See `TRACE-EXAMPLE.md` for a complete trace file with all 12 sections filled.
